@@ -1,0 +1,15 @@
+{
+  "name": "sticky-square-loader",
+  "private": true,
+  "version": "0.0.0",
+  "homepage": "https://oneznamov.github.io/sticky-square-loader/",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sticky Square Loader</title>
+    <style>
+      :root {
+        --bg: #000;
+        --fg: #f2ff00;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        margin: 0;
+        color: var(--fg);
+        background: var(--bg);
+        font: 600 12px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        display: grid;
+        min-height: 100vh;
+        grid-template-rows: 1fr auto auto;
+        gap: 24px;
+        padding: 24px 16px;
+      }
+
+      .stage {
+        display: grid;
+        place-items: center;
+      }
+
+      .loader-svg {
+        width: clamp(220px, 50vmin, 380px);
+        max-width: 90vw;
+        overflow: visible;
+      }
+
+      .loader-shape {
+        fill: var(--fg);
+      }
+
+      .controls,
+      .export {
+        width: min(760px, 100%);
+        margin-inline: auto;
+        border: 1px solid rgba(242, 255, 0, 0.28);
+        border-radius: 8px;
+        background: var(--bg);
+      }
+
+      .controls {
+        display: flex;
+        gap: 22px;
+        width: min(520px, 100%);
+        padding: 14px 16px;
+      }
+
+      label {
+        display: grid;
+        flex: 1;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        accent-color: var(--fg);
+      }
+
+      .export {
+        display: grid;
+        gap: 10px;
+        padding: 14px 16px;
+      }
+
+      textarea {
+        min-height: 210px;
+        resize: vertical;
+        border: 1px solid rgba(242, 255, 0, 0.3);
+        border-radius: 6px;
+        padding: 12px;
+        color: var(--fg);
+        background: #050505;
+        font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      }
+
+      @media (max-width: 520px) {
+        .controls {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="stage" aria-label="Sticky squares loading animation">
+        <div id="demo"></div>
+      </section>
+
+      <form class="controls" aria-label="Loader demo controls">
+        <label>
+          Speed
+          <input id="speed" type="range" min="1.4" max="4.2" value="2.6" step="0.1" />
+        </label>
+        <label>
+          Merge
+          <input id="merge" type="range" min="0" max="100" value="58" step="1" />
+        </label>
+      </form>
+
+      <section class="export" aria-label="Embeddable HTML SVG and CSS output">
+        <label>
+          Embed HTML/SVG/CSS
+          <textarea id="embed-code" spellcheck="false" readonly></textarea>
+        </label>
+      </section>
+    </main>
+
+    <script>
+      const SHAPE = "M20 0 H120 L100 100 H0 Z";
+      const SPLINES = "0.72 0 0.28 1;0.72 0 0.28 1;0.72 0 0.28 1;0.72 0 0.28 1";
+
+      const demo = document.querySelector("#demo");
+      const speed = document.querySelector("#speed");
+      const merge = document.querySelector("#merge");
+      const output = document.querySelector("#embed-code");
+
+      const settings = () => {
+        const strength = Number(merge.value) / 100;
+
+        return {
+          blur: (1.8 + strength * 7.2).toFixed(2),
+          contrast: (16 + strength * 12).toFixed(2),
+          cutoff: (-7 - strength * 6).toFixed(2),
+          duration: `${Number(speed.value).toFixed(1)}s`,
+          travel: (90 - strength * 18).toFixed(2),
+        };
+      };
+
+      const motion = (travel) => ({
+        one: `${travel} 0;${travel} ${travel};0 ${travel};0 0;${travel} 0`,
+        two: `0 ${travel};0 0;${travel} 0;${travel} ${travel};0 ${travel}`,
+      });
+
+      const svgMarkup = ({ filterId, title, shapeClass, ...values }) => {
+        const paths = motion(values.travel);
+        const matrix = `1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${values.contrast} ${values.cutoff}`;
+
+        return `<svg class="loader-svg" viewBox="0 0 220 220" aria-label="${title}" role="img">
+  <defs>
+    <filter id="${filterId}" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="${values.blur}" result="blur" />
+      <feColorMatrix in="blur" mode="matrix" values="${matrix}" result="goo" />
+      <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+    </filter>
+  </defs>
+  <g filter="url(#${filterId})">
+    <g>
+      <animateTransform attributeName="transform" type="translate" dur="${values.duration}" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.25;0.5;0.75;1" keySplines="${SPLINES}" values="${paths.one}" />
+      <path class="${shapeClass}" d="${SHAPE}" />
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="translate" dur="${values.duration}" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.25;0.5;0.75;1" keySplines="${SPLINES}" values="${paths.two}" />
+      <path class="${shapeClass}" d="${SHAPE}" />
+    </g>
+  </g>
+</svg>`;
+      };
+
+      const embedMarkup = (values) => `<div class="sticky-loader-embed">
+  ${svgMarkup({
+    ...values,
+    filterId: "sticky-loader-gooey",
+    shapeClass: "sticky-loader-shape",
+    title: "Sticky square loader",
+  })}
+</div>
+
+<style>
+  .sticky-loader-embed {
+    display: grid;
+    width: min(100%, 460px);
+    aspect-ratio: 1;
+    place-items: center;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .sticky-loader-embed .loader-svg {
+    width: min(82%, 360px);
+    overflow: visible;
+  }
+
+  .sticky-loader-shape {
+    fill: #f2ff00;
+  }
+</style>`;
+
+      const render = () => {
+        const values = settings();
+
+        demo.innerHTML = svgMarkup({
+          ...values,
+          filterId: "demo-gooey",
+          shapeClass: "loader-shape",
+          title: "Sticky square loader preview",
+        });
+        output.value = embedMarkup(values);
+      };
+
+      speed.addEventListener("input", render);
+      merge.addEventListener("input", render);
+      render();
+    </script>
+  </body>
+</html>
